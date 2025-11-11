@@ -1,10 +1,12 @@
 #include <Arduino.h>
 #include "driver/i2s.h"
 #include <math.h>
+#include "config.h"
 
 const int I2S_BCLK = 9;   // ESP32-C3 -> MAX98357 BCLK
 const int I2S_LRC  = 10;  // ESP32-C3 -> MAX98357 LRC/WS
 const int I2S_DIN  = 8;   // ESP32-C3 -> MAX98357 DIN
+const int BUTTON_PIN = 6; // пин кнопки
 
 void i2sInit() {
   i2s_config_t cfg = {
@@ -47,11 +49,20 @@ void setup(){
   Serial.begin(115200);
   Serial.println("I2S init");
   i2sInit();
-  Serial.println("Beep");
-  beep(1000, 300);   // 1 kHz, 300 ms
-  delay(400);
-  beep(600, 300);    // второй тон – для уверенности
-  Serial.println("Done");
+  pinMode(BUTTON_PIN, INPUT_PULLUP);  // кнопка подключена к GND и пину
+  Serial.println("Ready");
 }
 
-void loop(){}
+void loop(){
+  static bool prevState = HIGH;        // предыдущее состояние кнопки
+  bool state = digitalRead(BUTTON_PIN);
+  
+  // Срабатывает при нажатии (переход HIGH -> LOW)
+  if (prevState == HIGH && state == LOW) {
+    Serial.println("Button pressed");
+    beep(800, 200);   // короткий бип при нажатии
+  }
+
+  prevState = state;
+  delay(20);  // защита от дребезга
+}

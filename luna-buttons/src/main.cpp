@@ -1,12 +1,16 @@
 #include <Arduino.h>
+#include <WiFi.h>
+#include <HTTPClient.h>
 #include "driver/i2s.h"
 #include <math.h>
-#include "config.h"
+#include "config.h"   // содержит WIFI_SSID и WIFI_PASS
 
 const int I2S_BCLK = 9;   // ESP32-C3 -> MAX98357 BCLK
 const int I2S_LRC  = 10;  // ESP32-C3 -> MAX98357 LRC/WS
 const int I2S_DIN  = 8;   // ESP32-C3 -> MAX98357 DIN
 const int BUTTON_PIN = 6; // пин кнопки
+
+const char* WEBHOOK_URL = "https://n8n.bynau.me:5678/webhook/buttons";
 
 void i2sInit() {
   i2s_config_t cfg = {
@@ -45,24 +49,60 @@ void beep(uint32_t f=1200, uint32_t ms=250, uint32_t sr=22050) {
   }
 }
 
-void setup(){
+void sendWebhook() {
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(WEBHOOK_URL);
+    http.addHeader("Content-Type", "application/json");
+
+    String payload = "{\"event\":\"button_pressed\"}";
+    int httpCode = http.POST(payload);
+
+    Serial.printf("Webhook status: %d\n", httpCode);
+    http.end();
+  } else {
+    Serial.println("WiFi not connected, cannot send webhook");
+  }
+}
+
+void connectWiFi() {
+  Serial.printf("Connecting to %s...\n", WIFI_SSID);
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  int retry = 0;
+  while (WiFi.status() != WL_CONNECTED && retry < 30) {
+    delay(500);
+    Serial.print(".");
+    retry++;
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.printf("\nConnected! IP: %s\n", WiFi.localIP().toString().c_str());
+  } else {
+    Serial.println("\nFailed to connect to WiFi");
+  }
+}
+
+void setup() {
   Serial.begin(115200);
-  Serial.println("I2S init");
+  Serial.println("Booting...");
   i2sInit();
-  pinMode(BUTTON_PIN, INPUT_PULLUP);  // кнопка подключена к GND и пину
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  connectWiFi();
   Serial.println("Ready");
 }
 
-void loop(){
-  static bool prevState = HIGH;        // предыдущее состояние кнопки
+void loop() {
+  static bool prevState = HIGH;
+  static unsigned long lastPress = 0;
   bool state = digitalRead(BUTTON_PIN);
-  
-  // Срабатывает при нажатии (переход HIGH -> LOW)
-  if (prevState == HIGH && state == LOW) {
+
+  // защита от дребезга и удержания
+  if (prevState == HIGH && state == LOW && millis() - lastPress > 500) {
     Serial.println("Button pressed");
-    beep(800, 200);   // короткий бип при нажатии
+    beep(800, 150);
+    sendWebhook();
+    lastPress = millis();
   }
 
   prevState = state;
-  delay(20);  // защита от дребезга
+  delay(20);
 }

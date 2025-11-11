@@ -77,16 +77,26 @@ MAX98357A → Speaker
 ## 📁 Project Structure
 
 ```
-luna-buttons/
-├── src/
-│   ├── main.cpp           # Main application code
-│   ├── config.h.example   # Configuration template
-│   └── config.h           # Your config (gitignored)
-├── include/
-│   └── audio.h            # Audio playback functions
-├── platformio.ini         # PlatformIO configuration
-├── .gitignore
-└── README.md
+.
+├── README.md
+├── docs
+│   ├── architecture.md
+│   ├── hardware.md
+│   ├── mvp-scope.md
+│   └── software.md
+└── luna-buttons
+    ├── .gitignore
+    ├── .vscode
+    │   └── extensions.json
+    ├── include
+    │   └── README
+    ├── lib
+    │   └── README
+    ├── platformio.ini
+    ├── src
+    │   └── main.cpp
+    └── test
+        └── README
 ```
 
 ## 🔧 Configuration

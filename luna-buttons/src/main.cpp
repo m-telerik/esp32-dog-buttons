@@ -5,12 +5,18 @@
 #include <math.h>
 #include "config.h"   // содержит WIFI_SSID и WIFI_PASS
 
-const int I2S_BCLK = 9;   // ESP32-C3 -> MAX98357 BCLK
-const int I2S_LRC  = 10;  // ESP32-C3 -> MAX98357 LRC/WS
-const int I2S_DIN  = 8;   // ESP32-C3 -> MAX98357 DIN
-const int BUTTON_PIN = 6; // пин кнопки
-
+// URL для вебхука n8n. В идеале, его тоже стоит перенести в config.h
 const char* WEBHOOK_URL = "https://n8n.bynau.me:5678/webhook/buttons";
+
+const int I2S_BCLK = 9;   // ESP32-C3 -> MAX98357 BCLK
+const int I2S_LRC  = 10;
+const int I2S_DIN  = 8;
+const int BUTTON_PIN = 6;
+
+// Переменные для антидребезга (устранения "дребезга" контактов)
+int lastButtonState = HIGH;
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50; // 50 миллисекунд
 
 void i2sInit() {
   i2s_config_t cfg = {
@@ -49,13 +55,13 @@ void beep(uint32_t f=1200, uint32_t ms=250, uint32_t sr=22050) {
   }
 }
 
-void sendWebhook() {
+void sendWebhook(String buttonId) {
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
     http.begin(WEBHOOK_URL);
     http.addHeader("Content-Type", "application/json");
 
-    String payload = "{\"event\":\"button_pressed\"}";
+    String payload = "{\"event\":\"button_pressed\", \"button\":\"" + buttonId + "\"}";
     int httpCode = http.POST(payload);
 
     Serial.printf("Webhook status: %d\n", httpCode);
@@ -90,19 +96,28 @@ void setup() {
   Serial.println("Ready");
 }
 
-void loop() {
-  static bool prevState = HIGH;
-  static unsigned long lastPress = 0;
-  bool state = digitalRead(BUTTON_PIN);
+void loop(){
+  int reading = digitalRead(BUTTON_PIN);
 
-  // защита от дребезга и удержания
-  if (prevState == HIGH && state == LOW && millis() - lastPress > 500) {
-    Serial.println("Button pressed");
-    beep(800, 150);
-    sendWebhook();
-    lastPress = millis();
+  // Если состояние изменилось (шум или реальное нажатие), сбрасываем таймер
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
   }
 
-  prevState = state;
-  delay(20);
+  // Ждем, пока состояние не стабилизируется
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // Если кнопка была нажата (и до этого была отпущена)
+    if (reading == LOW && lastButtonState == HIGH) {
+      Serial.println("Button pressed!");
+
+      // Звук подтверждения
+      beep(1000, 300);
+
+      // Отправка на webhook
+      sendWebhook("button_1");
+    }
+  }
+
+  // Сохраняем текущее состояние для следующей итерации
+  lastButtonState = reading;
 }

@@ -1,5 +1,6 @@
 // lib/Network/Network.cpp
 #include "Network.h"
+#include <WiFiClientSecure.h>
 
 unsigned long Network::_lastCheckTime = 0;
 
@@ -62,8 +63,12 @@ bool Network::sendWebhookCustom(const char* url, const char* jsonPayload) {
         return false;
     }
     
+    // Используем WiFiClientSecure для HTTPS
+    WiFiClientSecure client;
+    client.setInsecure(); // Отключаем проверку сертификата
+    
     HTTPClient http;
-    http.begin(url);
+    http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
     http.setTimeout(5000);
     

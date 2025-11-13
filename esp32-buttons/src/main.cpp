@@ -1,9 +1,9 @@
+// src/main.cpp
 #include <Arduino.h>
-#include <WiFi.h>
-#include <HTTPClient.h>
 #include "driver/i2s.h"
 #include <math.h>
-#include "config.h" // WIFI_SSID, WIFI_PASSWORD, WEBHOOK_URL
+#include "config.h"
+#include <Network.h>        
 
 const int I2S_BCLK = 9;
 const int I2S_LRC = 10;
@@ -63,49 +63,6 @@ void beep(uint32_t f = 1200, uint32_t ms = 250, uint32_t sr = 22050) {
     }
 }
 
-void connectWiFi() {
-    Serial.printf("Connecting to WiFi: %s\n", WIFI_SSID);
-    WiFi.mode(WIFI_STA);
-    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-    
-    int attempts = 0;
-    while (WiFi.status() != WL_CONNECTED && attempts < 20) {
-        delay(500);
-        Serial.print(".");
-        attempts++;
-    }
-    Serial.println();
-    
-    if (WiFi.status() == WL_CONNECTED) {
-        Serial.printf("WiFi Connected! IP: %s\n", WiFi.localIP().toString().c_str());
-    } else {
-        Serial.println("WiFi connection failed!");
-    }
-}
-
-void sendWebhook(String buttonId) {
-    if (WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi not connected, skipping webhook");
-        return;
-    }
-    
-    HTTPClient http;
-    http.begin(WEBHOOK_URL);
-    http.addHeader("Content-Type", "application/json");
-    http.setTimeout(5000);
-    
-    String payload = "{\"event\":\"button_pressed\",\"button\":\"" + buttonId + "\"}";
-    int httpCode = http.POST(payload);
-    
-    if (httpCode > 0) {
-        Serial.printf("Webhook sent! HTTP code: %d\n", httpCode);
-    } else {
-        Serial.printf("Webhook failed: %s\n", http.errorToString(httpCode).c_str());
-    }
-    
-    http.end();
-}
-
 void setup() {
     Serial.begin(115200);
     delay(3000);
@@ -128,7 +85,7 @@ void setup() {
     beep(600, 300);
     
     Serial.println("[4/4] Connecting to WiFi...");
-    connectWiFi();
+    Network::connect(WIFI_SSID, WIFI_PASSWORD);  // Используем библиотеку!
     
     Serial.println("=================================");
     Serial.println(" READY!");
@@ -139,11 +96,14 @@ void setup() {
 void loop() {
     static unsigned long lastPrint = 0;
     
+    // Проверяем WiFi соединение
+    Network::checkConnection();
+    
     // Heartbeat каждые 5 секунд
     if (millis() - lastPrint > 5000) {
         Serial.printf("[%lu sec] WiFi: %s, Button: %d\n",
                      millis() / 1000,
-                     WiFi.status() == WL_CONNECTED ? "OK" : "FAIL",
+                     Network::isConnected() ? "OK" : "FAIL",  // Используем библиотеку!
                      digitalRead(BUTTON_PIN));
         lastPrint = millis();
     }
@@ -165,7 +125,7 @@ void loop() {
             if (buttonState == LOW) {
                 Serial.println(">>> BUTTON PRESSED <<<");
                 beep(1000, 300);
-                sendWebhook("button_1");
+                Network::sendWebhook(WEBHOOK_URL, "button_1");  // Используем библиотеку!
                 Serial.println("Done!");
             }
         }

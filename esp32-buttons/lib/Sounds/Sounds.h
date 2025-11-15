@@ -12,34 +12,13 @@ enum SoundType {
     SOUND_SUCCESS,
     SOUND_ERROR,
     
-    // Команды/активности
-    SOUND_WALK,
-    SOUND_FOOD,
-    SOUND_WATER,
+    // HextileRed
+    SOUND_TUG,
+    SOUND_BALL,
+    SOUND_PUZZLE,
     SOUND_PLAY,
-    SOUND_SLEEP,
-    SOUND_CAR,
+    SOUND_CATCH,
     
-    // Эмоции
-    SOUND_HAPPY,
-    SOUND_SAD,
-    SOUND_LOVE,
-    SOUND_HELP,
-    SOUND_SCARED,
-    SOUND_MAD,
-    
-    // Вопросы/ответы
-    SOUND_YES,
-    SOUND_NO,
-    SOUND_QUESTION,
-    SOUND_LOOK,
-    SOUND_COME,
-    
-    // Состояния
-    SOUND_DONE,
-    SOUND_MORE,
-    SOUND_WAIT,
-    SOUND_HOME,
 };
 
 // Структура ноты для мелодий
